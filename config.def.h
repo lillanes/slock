@@ -16,3 +16,6 @@ static const char * text_color = "#ffffff";
 
 /* text size (must be a valid size) */
 static const char * text_size = "lucidasanstypewriter-bold-24";
+
+/* time in seconds before the monitor shuts down */
+static const int monitortime = 3;
