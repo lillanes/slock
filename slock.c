@@ -221,6 +221,7 @@ readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens)
 					                     locks[screen]->win,
 					                     locks[screen]->colors[color]);
 					XClearWindow(dpy, locks[screen]->win);
+					writemessage(dpy, locks[screen]->win, screen);
 				}
 				oldc = color;
 			}
@@ -236,6 +237,7 @@ readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens)
 						XResizeWindow(dpy, locks[screen]->win,
 						              rre->width, rre->height);
 					XClearWindow(dpy, locks[screen]->win);
+					writemessage(dpy, locks[screen]->win, screen);
 					break;
 				}
 			}
