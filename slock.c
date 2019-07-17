@@ -23,6 +23,8 @@
 #include "util.h"
 
 char *argv0;
+const char *username;
+const char *hash;
 
 enum {
 	INIT,
@@ -62,6 +64,33 @@ die(const char *errstr, ...)
 #include <linux/oom.h>
 
 static void
+writemessage(Display *dpy, Window win, int screen)
+{
+	int len, width, height;
+	char message[43];
+	XGCValues gr_values;
+	XFontStruct *fontinfo;
+	XColor color, dummy;
+	GC gc;
+	fontinfo = XLoadQueryFont(dpy, text_size);
+
+	XAllocNamedColor(dpy, DefaultColormap(dpy, screen),
+			 text_color, &color, &dummy);
+
+	gr_values.font = fontinfo->fid;
+	gr_values.foreground = color.pixel;
+	gc=XCreateGC(dpy,win,GCFont+GCForeground, &gr_values);
+
+	sprintf(message, "locked by %s", username);
+	len = strlen(message);
+
+	height = DisplayHeight(dpy, screen)*3/7;
+	width  = (DisplayWidth(dpy, screen) - XTextWidth(fontinfo, message, len))/2;
+
+	XDrawString(dpy, win, gc, width, height, message, len);
+}
+
+static void
 dontkillme(void)
 {
 	FILE *f;
@@ -83,10 +112,9 @@ dontkillme(void)
 }
 #endif
 
-static const char *
+static void
 gethash(void)
 {
-	const char *hash;
 	struct passwd *pw;
 
 	/* Check if the current user has a password entry */
@@ -98,6 +126,7 @@ gethash(void)
 			die("slock: cannot retrieve password entry\n");
 	}
 	hash = pw->pw_passwd;
+	username = pw->pw_name;
 
 #if HAVE_SHADOW_H
 	if (!strcmp(hash, "x")) {
@@ -120,13 +149,10 @@ gethash(void)
 #endif /* __OpenBSD__ */
 	}
 #endif /* HAVE_SHADOW_H */
-
-	return hash;
 }
 
 static void
-readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens,
-       const char *hash)
+readpw(Display *dpy, struct xrandr *rr, struct lock **locks, int nscreens)
 {
 	XRRScreenChangeNotifyEvent *rre;
 	char buf[32], passwd[256], *inputhash;
@@ -311,7 +337,6 @@ main(int argc, char **argv) {
 	struct group *grp;
 	uid_t duid;
 	gid_t dgid;
-	const char *hash;
 	Display *dpy;
 	int s, nlocks, nscreens;
 
@@ -339,7 +364,7 @@ main(int argc, char **argv) {
 	dontkillme();
 #endif
 
-	hash = gethash();
+	gethash();
 	errno = 0;
 	if (!crypt("", hash))
 		die("slock: crypt: %s\n", strerror(errno));
@@ -363,10 +388,13 @@ main(int argc, char **argv) {
 	if (!(locks = calloc(nscreens, sizeof(struct lock *))))
 		die("slock: out of memory\n");
 	for (nlocks = 0, s = 0; s < nscreens; s++) {
-		if ((locks[s] = lockscreen(dpy, &rr, s)) != NULL)
+		if ((locks[s] = lockscreen(dpy, &rr, s)) != NULL) {
+			writemessage(dpy, locks[s]->win, s);
 			nlocks++;
-		else
+		}
+		else {
 			break;
+		}
 	}
 	XSync(dpy, 0);
 
@@ -389,7 +417,7 @@ main(int argc, char **argv) {
 	}
 
 	/* everything is now blank. Wait for the correct password */
-	readpw(dpy, &rr, locks, nscreens, hash);
+	readpw(dpy, &rr, locks, nscreens);
 
 	return 0;
 }
