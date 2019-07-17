@@ -1,5 +1,5 @@
 # slock version
-VERSION = 1.4
+VERSION = 1.4.lillanes
 
 # Customize below to fit your system
 
