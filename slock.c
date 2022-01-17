@@ -434,8 +434,6 @@ main(int argc, char **argv) {
 		case -1:
 			die("slock: fork failed: %s\n", strerror(errno));
 		case 0:
-			monitorreset(dpy, standby, suspend, off);
-
 			if (close(ConnectionNumber(dpy)) < 0)
 				die("slock: close: %s\n", strerror(errno));
 			execvp(argv[0], argv);
